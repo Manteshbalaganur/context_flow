@@ -1,11 +1,11 @@
 ---
 name: search
-description: Use when the user wants to find prior work, checkpoints, or agent conversations by topic, repo, branch, author, or recent time window
+description: Use when the user wants to find prior work, checkpoints, or agent conversations by topic, repo, branch, author, or recent time window, or to search code content across repositories
 ---
 
-# Search Checkpoints
+# Search Checkpoints and Code
 
-Use `entire search` to find relevant checkpoints before guessing from memory.
+Use `entire search` to find relevant checkpoints before guessing from memory, or `entire search --code` to search code content across repositories.
 
 ## Response Format
 
@@ -23,8 +23,9 @@ followed by a blank line, then the content.
 - The user asks things like "have we done this before?", "search past work", "find the previous implementation", or "look for checkpoints about X"
 - You need prior context from another branch, repo, author, or recent time period
 - You want likely matches first, then a deeper transcript read only for the best hit
+- The user wants to find code across repositories they have access to, e.g. "where is X implemented?", "find usages of Y in our other repos" — use code search (`--code`)
 
-Do not use this for the current active session. Use `session-handoff` for that.
+Do not use this for the current active session. Use `session-handoff` for that. For searching files in the current working copy, prefer local tools (grep, ripgrep) over code search.
 
 ## Process
 
@@ -56,6 +57,33 @@ If `--full` fails, fall back to:
 entire explain --checkpoint <checkpoint-id> --raw-transcript --no-pager
 ```
 
+## Code Search
+
+Add `--code` to search code content instead of checkpoints:
+
+```bash
+entire search "<query>" --code --json
+```
+
+Scope and refine with flags:
+
+```bash
+entire search "<query>" --code --json --repo owner/name --limit 20 --case-sensitive
+```
+
+- By default results are scoped to the current repository; add `--all-repos` (or `repo:*`) to search every repo the user can access
+- `--case-sensitive` only applies with `--code`
+- `--limit` is the total result count for code search (not per page)
+- `--author`, `--branch`, and `--date` are checkpoint filters — do not combine them with `--code`
+- Present results as file paths with matching snippets; do not dump raw JSON unless asked
+
+### Code Search Heuristics
+
+- Search for distinctive tokens: function names, error strings, config keys — not natural-language descriptions
+- Prefer exact identifiers over partial words; add `--case-sensitive` when the identifier casing matters (e.g. `HttpClient` vs `httpclient`)
+- Scope with `--repo` when the user names a repo; otherwise start with the current repo and widen with `--all-repos` if nothing hits
+- If a query is too broad, add a second distinctive term or increase specificity before raising `--limit`
+
 ## Search Heuristics
 
 - Start with the user's domain terms, feature name, error text, file name, or ticket ID
@@ -66,5 +94,6 @@ entire explain --checkpoint <checkpoint-id> --raw-transcript --no-pager
 ## Failure Modes
 
 - If search says authentication is required, tell the user to run `entire login`
+- If code search says it is not yet available, tell the user to update the Entire CLI to the latest version
 - If there are no matches, say that clearly and mention the filters or query terms you tried
 - If the user really wants the current session, switch to `session-handoff` instead of searching checkpoints

@@ -1,6 +1,6 @@
 ---
 name: entire-search
-description: Search Entire checkpoint history and transcripts with `entire search --json`. Use proactively when the user asks about previous work, commits, sessions, prompts, or historical context in this repository.
+description: Search Entire checkpoint history and transcripts with `entire search --json`, or code content across repositories with `entire search --code --json`. Use proactively when the user asks about previous work, commits, sessions, prompts, historical context in this repository, or where code lives in other repositories.
 tools: Bash
 model: haiku
 ---
@@ -19,7 +19,8 @@ Workflow:
 1. Turn the task into one or more focused `entire search --json` queries.
 2. Always use machine-readable output via `entire search --json`.
 3. Use inline filters like `author:`, `date:`, `branch:`, and `repo:` when they improve precision.
-4. If results are broad, rerun `entire search --json` with a narrower query instead of switching tools.
-5. Summarize the strongest matches with the relevant commit, session, file, and prompt details available in the results.
+4. For code content searches across repositories, add `--code` and refine with `--repo`, `--all-repos`, `--limit`, or `--case-sensitive`. Do not combine `--author`, `--branch`, or `--date` with `--code`. Query with distinctive tokens like function names, error strings, or config keys.
+5. If results are broad, rerun `entire search --json` with a narrower query instead of switching tools.
+6. Summarize the strongest matches with the relevant commit, session, file, and prompt details available in the results.
 
 Keep answers concise and evidence-based.
