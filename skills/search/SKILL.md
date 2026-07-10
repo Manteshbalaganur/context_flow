@@ -84,6 +84,14 @@ entire search "<query>" --code --json --repo owner/name --limit 20 --case-sensit
 - Scope with `--repo` when the user names a repo; otherwise start with the current repo and widen with `--all-repos` if nothing hits
 - If a query is too broad, add a second distinctive term or increase specificity before raising `--limit`
 
+### Code Search Fallback
+
+Code search is currently limited to admins and users on the insider list. If a `--code` search fails with "not yet available" or an access/permission error, do not retry — fall back:
+
+1. Tell the user code search requires admin or insider access
+2. If the target repo is checked out locally, search it with local tools (ripgrep, grep) instead
+3. For cross-repo questions, run a checkpoint search (`entire search "<query>" --json`, optionally `repo:*`) to find prior work that touches the code in question
+
 ## Search Heuristics
 
 - Start with the user's domain terms, feature name, error text, file name, or ticket ID
@@ -94,6 +102,6 @@ entire search "<query>" --code --json --repo owner/name --limit 20 --case-sensit
 ## Failure Modes
 
 - If search says authentication is required, tell the user to run `entire login`
-- If code search says it is not yet available, tell the user to update the Entire CLI to the latest version
+- If code search says it is not available or access is denied, it is limited to admins and insiders — use the Code Search Fallback above rather than retrying
 - If there are no matches, say that clearly and mention the filters or query terms you tried
 - If the user really wants the current session, switch to `session-handoff` instead of searching checkpoints
