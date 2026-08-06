@@ -32,32 +32,40 @@ Do not use this for the current active session. Use `session-handoff` for that. 
 1. Run a focused search with JSON output so results are easy to inspect:
 
 ```bash
-entire search "<query>" --json
+entire search "<query>" --json --limit 5
 ```
+
+Start with `--limit 5`: each checkpoint result embeds its full prompt, so default pages can run tens of KB. Raise the limit or use `--page` only when the first page has no good hit.
 
 Add filters when the user already gave them or when the first search is too broad:
 
 ```bash
-entire search "<query>" --json --repo owner/name --branch branch-name --author "Name" --date week
+entire search "<query>" --json --limit 5 --repo owner/name --branch branch-name --author "Name" --date week
 ```
 
 Inline filters are also supported in the query: `author:<name>`, `date:<week|month>`, `branch:<name>`, `repo:<owner/name>`, `repo:*`.
 
-2. Review the top matches and summarize the likely candidates for the user. Do not dump raw JSON unless they ask for it.
+To search all accessible repos, write `repo:*` inside the query string or pass `--repo '*'` (quoted). `--repo repo:*` is invalid — inline tokens never go in flag values.
 
-3. If the user wants details on a specific result, open the checkpoint with:
+2. Review the top matches and summarize the likely candidates for the user. Do not dump raw JSON unless they ask for it. If a result's `prompt` snippet and `filesTouched` already answer the question, answer directly — do not run `explain` unless the user asks for details or the top hits are ambiguous.
+
+3. If the user wants details on a specific result, open the checkpoint using the `id` field from the JSON result:
 
 ```bash
-entire explain --checkpoint <checkpoint-id> --full --no-pager
+entire checkpoint explain <checkpoint-id> --full --no-pager
 ```
 
 If `--full` fails, fall back to:
 
 ```bash
-entire explain --checkpoint <checkpoint-id> --raw-transcript --no-pager
+entire checkpoint explain <checkpoint-id> --raw-transcript --no-pager
 ```
 
+(`entire explain --checkpoint` is a deprecated alias.) If explain reports no checkpoint found for an id taken from cross-repo results, do not retry — answer from the result's `prompt` snippet and `filesTouched` instead.
+
 ## Code Search
+
+Code search is currently limited to admins and users on the insider list — if you are not sure it is enabled, expect "code search is not yet available" and go straight to the Code Search Fallback below instead of retrying.
 
 Add `--code` to search code content instead of checkpoints:
 
