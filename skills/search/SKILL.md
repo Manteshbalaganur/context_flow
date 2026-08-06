@@ -47,7 +47,7 @@ Inline filters are also supported in the query: `author:<name>`, `date:<week|mon
 
 To search all accessible repos, write `repo:*` inside the query string or pass `--repo '*'` (quoted). `--repo repo:*` is invalid — inline tokens never go in flag values.
 
-2. Review the top matches and summarize the likely candidates for the user. Do not dump raw JSON unless they ask for it.
+2. Review the top matches and summarize the likely candidates for the user. Do not dump raw JSON unless they ask for it. If a result's `prompt` snippet and `filesTouched` already answer the question, answer directly — do not run `explain` unless the user asks for details or the top hits are ambiguous.
 
 3. If the user wants details on a specific result, open the checkpoint using the `id` field from the JSON result:
 
