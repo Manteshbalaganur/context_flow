@@ -5,7 +5,7 @@ description: Use when the user wants to find prior work, checkpoints, or agent c
 
 # Search Checkpoints and Code
 
-Use `entire search` to find relevant checkpoints before guessing from memory, or `entire search --code` to search code content across repositories.
+Use `entire search` to find prior checkpoints, commits, and sessions with hybrid (semantic + keyword) search, or `entire search --code` to search code content across repositories. Requires `entire login`. Never run `entire search` without `--json` — it opens an interactive TUI.
 
 ## Response Format
 
@@ -29,43 +29,40 @@ Do not use this for the current active session. Use `session-handoff` for that. 
 
 ## Process
 
-1. Run a focused search with JSON output so results are easy to inspect:
+1. Run a focused search with compact JSON output:
 
 ```bash
-entire search "<query>" --json --limit 5
+entire search "<query>" --json --compact --limit 5
 ```
 
-Start with `--limit 5`: each checkpoint result embeds its full prompt, so default pages can run tens of KB. Raise the limit or use `--page` only when the first page has no good hit.
+Each compact hit carries `id`, `type` (checkpoint, commit, session, repo, or pr), `repo`, `branch`, `author`, `date`, a truncated `title`, the matched `snippet`, `filesTouched`, and a relevance `score` — never the full prompt. Results are ranked by relevance; raise `--limit` (per page) or add `--page` (1-based) only when the first five have no good hit.
+
+If the CLI rejects `--compact` as an unknown flag (versions before 0.10.0), drop it and keep `--limit 5` — without `--compact` each hit embeds its full prompt, so a default page can run tens of KB.
 
 Add filters when the user already gave them or when the first search is too broad:
 
 ```bash
-entire search "<query>" --json --limit 5 --repo owner/name --branch branch-name --author "Name" --date week
+entire search "<query>" --json --compact --limit 5 --repo owner/name --branch branch-name --author "Name" --date week
 ```
 
-Inline filters are also supported in the query: `author:<name>`, `date:<week|month>`, `branch:<name>`, `repo:<owner/name>`, `repo:*`.
+- `--repo` takes multiple repos: repeat it or comma-separate (`--repo a --repo b`, `--repo a,b`)
+- Inline filters also work in the query: `author:<name>`, `date:<week|month>`, `branch:<name>`, `repo:<owner/name>`, `repo:*`
+- Results default to the current repository. To search all accessible repos, pass `--all-repos`, write `repo:*` inside the query string, or pass `--repo '*'` (quoted). `--repo repo:*` is invalid — inline tokens never go in flag values.
 
-To search all accessible repos, write `repo:*` inside the query string or pass `--repo '*'` (quoted). `--repo repo:*` is invalid — inline tokens never go in flag values.
+2. Review the top hits and summarize the likely candidates for the user. Do not dump raw JSON unless they ask for it. If a hit's `title`, `snippet`, and `filesTouched` already answer the question, answer directly — do not run `explain` unless the user asks for details or the top hits are ambiguous. Prefer checkpoint and commit hits; session hits are projections of the same checkpoints.
 
-2. Review the top matches and summarize the likely candidates for the user. Do not dump raw JSON unless they ask for it. If a result's `prompt` snippet and `filesTouched` already answer the question, answer directly — do not run `explain` unless the user asks for details or the top hits are ambiguous.
-
-3. If the user wants details on a specific result, open the checkpoint using the `id` field from the JSON result:
+3. To drill into a hit, pass its `id` (checkpoint ID or commit SHA, auto-detected) to:
 
 ```bash
-entire checkpoint explain <checkpoint-id> --full --no-pager
+entire checkpoint explain <id> --no-pager
 ```
 
-If `--full` fails, fall back to:
-
-```bash
-entire checkpoint explain <checkpoint-id> --raw-transcript --no-pager
-```
-
-(`entire explain --checkpoint` is a deprecated alias.) If explain reports no checkpoint found for an id taken from cross-repo results, do not retry — answer from the result's `prompt` snippet and `filesTouched` instead.
+- Add `--full` to pull the checkpoint's entire session transcript; if `--full` fails, fall back to `--raw-transcript`
+- For a checkpoint hit from another GitHub repo, add `--repo <owner/name>` — it needs the full checkpoint `id` from the hit and a checkpoint that has been pushed. If the flag is unknown (versions before 0.10.0) or explain finds nothing, do not retry — answer from the compact fields instead
+- For a session hit on the current branch, bridge with `entire checkpoint explain --session <id>`, which lists that session's checkpoints; explain one of those
+- repo and pr hits (and sessions or commits from other repos or branches) cannot be explained — summarize them from the compact fields alone
 
 ## Code Search
-
-Code search is currently limited to admins and users on the insider list — if you are not sure it is enabled, expect "code search is not yet available" and go straight to the Code Search Fallback below instead of retrying.
 
 Add `--code` to search code content instead of checkpoints:
 
@@ -79,10 +76,10 @@ Scope and refine with flags:
 entire search "<query>" --code --json --repo owner/name --limit 20 --case-sensitive
 ```
 
-- By default results are scoped to the current repository; add `--all-repos` (or `repo:*`) to search every repo the user can access
+- By default results are scoped to the current repository; add `--all-repos` (or `repo:*`) to search every repo the user can access, or list repos with `--repo`
 - `--case-sensitive` only applies with `--code`
 - `--limit` is the total result count for code search (not per page)
-- `--author`, `--branch`, and `--date` are checkpoint filters — do not combine them with `--code`
+- `--author`, `--branch`, `--date`, `--page`, and `--compact` are checkpoint-search options — do not combine them with `--code`
 - Present results as file paths with matching snippets; do not dump raw JSON unless asked
 
 ### Code Search Heuristics
@@ -91,14 +88,7 @@ entire search "<query>" --code --json --repo owner/name --limit 20 --case-sensit
 - Prefer exact identifiers over partial words; add `--case-sensitive` when the identifier casing matters (e.g. `HttpClient` vs `httpclient`)
 - Scope with `--repo` when the user names a repo; otherwise start with the current repo and widen with `--all-repos` if nothing hits
 - If a query is too broad, add a second distinctive term or increase specificity before raising `--limit`
-
-### Code Search Fallback
-
-Code search is currently limited to admins and users on the insider list. If a `--code` search fails with "not yet available" or an access/permission error, do not retry — fall back:
-
-1. Tell the user code search requires admin or insider access
-2. If the target repo is checked out locally, search it with local tools (ripgrep, grep) instead
-3. For cross-repo questions, run a checkpoint search (`entire search "<query>" --json`, optionally `repo:*`) to find prior work that touches the code in question
+- If code search fails or reports that some regions were skipped, treat results as incomplete: search locally checked-out repos with ripgrep/grep, or run a checkpoint search for prior work touching that code
 
 ## Search Heuristics
 
@@ -110,6 +100,6 @@ Code search is currently limited to admins and users on the insider list. If a `
 ## Failure Modes
 
 - If search says authentication is required, tell the user to run `entire login`
-- If code search says it is not available or access is denied, it is limited to admins and insiders — use the Code Search Fallback above rather than retrying
+- If search says it "cannot search this repo yet", the repo is not indexed or its owner has not enabled semantic search — report that instead of retrying
 - If there are no matches, say that clearly and mention the filters or query terms you tried
 - If the user really wants the current session, switch to `session-handoff` instead of searching checkpoints
