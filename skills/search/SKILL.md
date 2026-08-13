@@ -32,17 +32,17 @@ Do not use this for the current active session. Use `session-handoff` for that. 
 1. Run a focused search with compact JSON output:
 
 ```bash
-entire search "<query>" --json --compact
+entire search "<query>" --json --compact --limit 5
 ```
 
-Each compact hit carries `id`, `type` (checkpoint, commit, session, repo, or pr), `repo`, `branch`, `author`, `date`, a truncated `title`, the matched `snippet`, `filesTouched`, and a relevance `score` — never the full prompt. Results are ranked by relevance; use `--limit` (per page) and `--page` (1-based) only when the first page has no good hit.
+Each compact hit carries `id`, `type` (checkpoint, commit, session, repo, or pr), `repo`, `branch`, `author`, `date`, a truncated `title`, the matched `snippet`, `filesTouched`, and a relevance `score` — never the full prompt. Results are ranked by relevance; raise `--limit` (per page) or add `--page` (1-based) only when the first five have no good hit.
 
-If the CLI rejects `--compact` as an unknown flag (versions before 0.10.0), drop it and add `--limit 5` instead — without `--compact` each hit embeds its full prompt, so a default page can run tens of KB.
+If the CLI rejects `--compact` as an unknown flag (versions before 0.10.0), drop it and keep `--limit 5` — without `--compact` each hit embeds its full prompt, so a default page can run tens of KB.
 
 Add filters when the user already gave them or when the first search is too broad:
 
 ```bash
-entire search "<query>" --json --compact --repo owner/name --branch branch-name --author "Name" --date week
+entire search "<query>" --json --compact --limit 5 --repo owner/name --branch branch-name --author "Name" --date week
 ```
 
 - `--repo` takes multiple repos: repeat it or comma-separate (`--repo a --repo b`, `--repo a,b`)
