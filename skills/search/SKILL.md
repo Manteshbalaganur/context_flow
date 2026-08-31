@@ -86,7 +86,7 @@ entire search "<query>" --code --json --repo owner/name --limit 20 --case-sensit
 
 - Search for distinctive tokens: function names, error strings, config keys — not natural-language descriptions
 - Prefer exact identifiers over partial words; add `--case-sensitive` when the identifier casing matters (e.g. `HttpClient` vs `httpclient`)
-- Scope with `--repo` when the user names a repo; otherwise start with the current repo and widen with `--all-repos` if nothing hits
+- Scope with `--repo` when the user names a repo; start with `--all-repos` when the code plausibly lives in another repo; otherwise start with the current repo and widen with `--all-repos` if nothing hits
 - If a query is too broad, add a second distinctive term or increase specificity before raising `--limit`
 - If code search fails or reports that some regions were skipped, treat results as incomplete: search locally checked-out repos with ripgrep/grep, or run a checkpoint search for prior work touching that code
 
@@ -95,7 +95,8 @@ entire search "<query>" --code --json --repo owner/name --limit 20 --case-sensit
 - Start with the user's domain terms, feature name, error text, file name, or ticket ID
 - Prefer narrower searches before increasing `--limit`
 - Add `--repo` or `repo:*` explicitly when repository scope matters
-- If there are no useful hits, broaden in this order: remove branch filter, widen date, simplify query terms
+- Escalate to `--all-repos` whenever the answer plausibly lives outside the current repo — infrastructure or deploy repos, another service in the stack, fleet-wide changes — rather than waiting for an empty result
+- If there are no useful hits, broaden in this order: remove branch filter, widen date, simplify query terms, add `--all-repos`
 
 ## Failure Modes
 
