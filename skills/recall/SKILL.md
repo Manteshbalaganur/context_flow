@@ -61,6 +61,8 @@ entire search "<original task phrasing>" --json --limit 15 --date month
 entire search "<alternate phrasing>" --json --limit 15 --date month
 ```
 
+Results are scoped to the current repository by default. If the task plausibly happened in another repo — infrastructure or deploy repos, another service in the stack, a fleet-wide change, or phrasing that names systems this repo does not contain — add `--all-repos` to both searches up front instead of waiting for zero hits.
+
 5. Deduplicate hits by checkpoint ID. Score by:
 
 - topical overlap with the user's task description (weight: high)
@@ -79,6 +81,8 @@ If `--full` fails for a checkpoint, fall back to:
 ```bash
 entire checkpoint explain --checkpoint <checkpoint-id> --raw-transcript --no-pager
 ```
+
+For a hit from another repo (the hit's `repo` field differs from the current repo), add `--repo <owner/name>` to both explain commands — it needs the full checkpoint ID and a checkpoint that has been pushed. If explain still finds nothing, build the playbook from the search hit's fields instead of retrying.
 
 7. Build the playbook in this order:
 
@@ -119,5 +123,6 @@ Entire Recall:
   1. Simplify the query to its single strongest noun
   2. Drop the `--date` filter
   3. Remove any `--branch` or `--repo` constraints
+  4. Add `--all-repos` to search every repo the user can access
 - If still empty after broadening, say clearly: `No prior sessions matched. Tried: <queries and filters>.` Do not invent a precedent.
 - If a top hit's transcript cannot be read via `--full` or `--raw-transcript`, drop it from the playbook and use the next-best hit. Note the dropped checkpoint ID at the end of the playbook so the user can investigate manually.
