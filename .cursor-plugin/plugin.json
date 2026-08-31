@@ -2,7 +2,7 @@
   "name": "entire",
   "displayName": "Entire",
   "description": "Cross-agent skills and commands powered by Entire.",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "author": {
     "name": "Entire Inc"
   },
