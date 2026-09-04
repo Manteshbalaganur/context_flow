@@ -7,6 +7,12 @@ description: Use when the user wants to find prior work, checkpoints, or agent c
 
 Use `entire search` to find prior checkpoints, commits, and sessions with hybrid (semantic + keyword) search, or `entire search --code` to search code content across repositories. Requires `entire login`. Never run `entire search` without `--json` — it opens an interactive TUI.
 
+## Execution Environment (Required)
+
+On macOS, `entire` reads its credentials from the local secrets store, which is not available inside the Codex sandbox. Run every `entire` command used by this skill outside the sandbox **on the first attempt**. In Codex, invoke the shell tool with `sandbox_permissions: "require_escalated"` and a concise justification that the command needs access to the user's local Entire credentials. This applies to both `entire search` and `entire checkpoint explain`.
+
+Do not first try an `entire` command in the sandbox, and do not treat a sandbox-induced credential error as evidence that the user needs to log in. Only report that authentication is required when an outside-the-sandbox invocation reports it.
+
 ## Response Format
 
 Begin the first response to this skill invocation with the line:
