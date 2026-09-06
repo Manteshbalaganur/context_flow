@@ -22,3 +22,7 @@ CheckIN displays real Entire CLI checkpoint history when Entire is installed and
 `Git + Entire context + dependency evidence → DevelopmentEvent → storage → intelligence → project memory → Streamlit → CheckOUT`
 
 Every stored object and query is scoped by `project_id`. Local JSON persistence is used for demos; `.env` can configure production integrations using `.env.example`. Dependency impact is heuristic unless explicitly verified.
+
+## Databricks pipeline
+
+Import `databricks/checkpoint_processor.py` into the `checkpoint_processor` notebook for the `hackathon-data-pipeline` job. Add `DATABRICKS_SERVER_HOSTNAME`, `DATABRICKS_HTTP_PATH`, and `DATABRICKS_ACCESS_TOKEN` to `.env`. The notebook and dashboard both use the active CheckIN project's `project_id`; use that exact value when ingesting checkpoint records. The dashboard is read-only against `processed_db.llm_insights` and gracefully falls back to local data if Databricks is unavailable.

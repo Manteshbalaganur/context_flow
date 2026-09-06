@@ -4,3 +4,4 @@ plotly
 GitPython
 pydantic
 python-dotenv
+databricks-sql-connector
