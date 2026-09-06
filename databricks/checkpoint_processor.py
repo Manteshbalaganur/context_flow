@@ -30,6 +30,18 @@ CREATE TABLE IF NOT EXISTS processed_db.llm_insights (
 ) USING DELTA
 """)
 
+# Existing hackathon tables may have been created before project isolation was
+# added. CREATE TABLE IF NOT EXISTS does not migrate them, so add the column
+# explicitly and retain all existing rows.
+def ensure_project_column(table_name):
+    columns = {field.name.lower() for field in spark.table(table_name).schema.fields}
+    if "project_id" not in columns:
+        spark.sql(f"ALTER TABLE {table_name} ADD COLUMNS (project_id STRING)")
+        print(f"Added project_id to {table_name}")
+
+ensure_project_column("checkin_db.raw_checkpoints")
+ensure_project_column("processed_db.llm_insights")
+
 # COMMAND ----------
 # Option A (recommended): pass a JSON array through a job parameter named
 # `checkpoints_json`. Each item requires project_id, checkpoint_id, timestamp,
@@ -41,6 +53,19 @@ try:
     checkpoints_json = dbutils.widgets.get("checkpoints_json")
 except Exception:
     checkpoints_json = ""
+try:
+    default_project_id = dbutils.widgets.get("default_project_id").strip()
+except Exception:
+    default_project_id = ""
+
+if default_project_id:
+    # This one-time backfill assigns legacy rows to the selected CheckIN project.
+    # Keep the value constrained before placing it in the Delta SQL literal.
+    import re
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", default_project_id):
+        raise ValueError("default_project_id must contain only letters, numbers, _ or -")
+    for legacy_table in ("checkin_db.raw_checkpoints", "processed_db.llm_insights"):
+        spark.sql(f"UPDATE {legacy_table} SET project_id = '{default_project_id}' WHERE project_id IS NULL")
 
 sample_checkpoints = [
     {"project_id": "REPLACE_WITH_CHECKIN_PROJECT_ID", "checkpoint_id": "cp_demo_001",

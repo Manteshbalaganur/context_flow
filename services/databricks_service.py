@@ -35,23 +35,57 @@ def pipeline_connection_status():
     except ImportError:
         return {"connected": False, "message": "Install databricks-sql-connector to query pipeline insights."}
 
+def _safe_table_name():
+    table = databricks_table("CHECKIN_DATABRICKS_INSIGHTS_TABLE", "processed_db.llm_insights")
+    if not re.fullmatch(r"[A-Za-z_][\w.]*", table):
+        raise ValueError("Invalid configured insights table name.")
+    return table
+
+def _connect():
+    from databricks import sql
+    import os
+    return sql.connect(server_hostname=os.environ["DATABRICKS_SERVER_HOSTNAME"], http_path=os.environ["DATABRICKS_HTTP_PATH"], access_token=os.environ["DATABRICKS_ACCESS_TOKEN"])
+
+def test_pipeline_connection():
+    """Run a minimal read-only query so the UI can distinguish config from access."""
+    status = pipeline_connection_status()
+    if not status["connected"]:
+        return False, status["message"]
+    try:
+        with _connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+                cursor.fetchone()
+        return True, "Connected to Databricks SQL Warehouse."
+    except Exception as exc:
+        return False, f"Databricks connection failed: {exc}"
+
 def query_pipeline_insights(project_id, limit=50):
-    """Read only processed, project-scoped pipeline results from Delta/Databricks SQL."""
+    """Read processed insights, preserving isolation where the Delta schema supports it."""
     if not re.fullmatch(r"[A-Za-z0-9_-]+", project_id or ""):
         return [], "Invalid project identifier."
     status = pipeline_connection_status()
     if not status["connected"]:
         return [], status["message"]
-    table = databricks_table("CHECKIN_DATABRICKS_INSIGHTS_TABLE", "processed_db.llm_insights")
-    if not re.fullmatch(r"[A-Za-z_][\w.]*", table):
-        return [], "Invalid configured insights table name."
     try:
-        from databricks import sql
-        import os
-        with sql.connect(server_hostname=os.environ["DATABRICKS_SERVER_HOSTNAME"], http_path=os.environ["DATABRICKS_HTTP_PATH"], access_token=os.environ["DATABRICKS_ACCESS_TOKEN"]) as connection:
+        table = _safe_table_name()
+        with _connect() as connection:
             with connection.cursor() as cursor:
-                cursor.execute(f"SELECT checkpoint_id, timestamp, agent, intent, status, summary, risk_level, completion_score, recommendations, unresolved_issues, files_changed, processing_time FROM {table} WHERE project_id = :project_id ORDER BY processing_time DESC LIMIT {int(limit)}", {"project_id": project_id})
+                cursor.execute(f"DESCRIBE {table}")
+                schema_columns = {row[0].lower() for row in cursor.fetchall()}
+                if not schema_columns:
+                    return [], f"Databricks table `{table}` was not found or has no columns."
+                order_column = "processing_time" if "processing_time" in schema_columns else "timestamp"
+                if "project_id" in schema_columns:
+                    query = f"SELECT * FROM {table} WHERE project_id = :project_id ORDER BY {order_column} DESC LIMIT {int(limit)}"
+                    cursor.execute(query, {"project_id": project_id})
+                    warning = None
+                else:
+                    # Existing screenshot schema is legacy: it predates project_id.
+                    # Surface it for migration, but never claim it is project-isolated.
+                    cursor.execute(f"SELECT * FROM {table} ORDER BY {order_column} DESC LIMIT {int(limit)}")
+                    warning = f"Legacy Databricks schema detected: `{table}` has no project_id, so these rows are not project-isolated. Add project_id and rerun the pipeline."
                 columns = [item[0] for item in cursor.description]
-                return [dict(zip(columns, row)) for row in cursor.fetchall()], None
+                return [dict(zip(columns, row)) for row in cursor.fetchall()], warning
     except Exception as exc:
         return [], f"Databricks query unavailable: {exc}"

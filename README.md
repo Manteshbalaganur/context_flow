@@ -26,3 +26,7 @@ Every stored object and query is scoped by `project_id`. Local JSON persistence 
 ## Databricks pipeline
 
 Import `databricks/checkpoint_processor.py` into the `checkpoint_processor` notebook for the `hackathon-data-pipeline` job. Add `DATABRICKS_SERVER_HOSTNAME`, `DATABRICKS_HTTP_PATH`, and `DATABRICKS_ACCESS_TOKEN` to `.env`. The notebook and dashboard both use the active CheckIN project's `project_id`; use that exact value when ingesting checkpoint records. The dashboard is read-only against `processed_db.llm_insights` and gracefully falls back to local data if Databricks is unavailable.
+
+If your existing table predates `project_id`, CheckIN reads it in clearly labelled legacy mode so the existing rows can be displayed. Run the updated notebook to add and populate `project_id` for proper multi-project isolation.
+
+For a one-time migration of existing demo rows, add a `default_project_id` job parameter with the Project ID shown in the CheckIN Project Overview. The notebook adds the missing column and assigns only rows with a null project ID; future runs should supply `project_id` per record in `checkpoints_json`.
