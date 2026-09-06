@@ -1,0 +1,6 @@
+.env
+.streamlit/secrets.toml
+__pycache__/
+*.py[cod]
+data/checkin_local.json
+.venv/

@@ -1,0 +1,7 @@
+from models import ProjectHandoff
+from utils.helpers import now_iso
+def generate_handoff(project,event,intelligence):
+    lines=[f"# CheckOUT: {project.project_name}",f"Generated: {now_iso()}","","## Project summary",project.description or "No project description recorded.","","## Development story",f"**Original intent:** {event.intent or 'Not recorded'}",f"**Current progress:** {intelligence.completion_score}%","","## Recent changes"]
+    lines += [f"- `{x}`" for x in intelligence.evidence.get("changed_files",[])] or ["- No file-level Git changes captured."]
+    lines += ["","## Context",f"**Assumptions:** {', '.join(event.assumptions) or 'None recorded'}",f"**Actions attempted:** {', '.join(event.actions_attempted) or 'None recorded'}",f"**Failures:** {', '.join(event.failures) or 'None recorded'}",f"**Unresolved work:** {', '.join(event.unresolved_work) or 'None recorded'}","","## Impact and intelligence",f"- Blast radius: **{intelligence.blast_radius}** — {intelligence.blast_radius_reason}",f"- Intent drift: **{intelligence.intent_drift_status}** — {intelligence.intent_drift_reason}",f"- Context debt: **{intelligence.context_debt_score}/100 ({intelligence.context_debt_level})** — {intelligence.context_debt_reason}",f"- Handoff readiness: **{intelligence.handoff_readiness}** — {intelligence.handoff_readiness_reason}","","## Recommended next step",intelligence.recommended_next_step]
+    return ProjectHandoff(project_id=project.project_id,generated_at=now_iso(),markdown="\n".join(lines))
