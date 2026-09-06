@@ -32,7 +32,7 @@ def sidebar():
                 from services.sync_service import check_in_project
                 check_in_project(selected); st.success("CheckIN recorded."); st.rerun()
             except Exception as exc: st.error(str(exc))
-        st.caption("● Demo/local store active · Entire and Databricks optional")
+        st.caption("● Local JSON store active · Entire and Databricks optional")
     return project_service.get_project(st.session_state.get("selected_project_id")) if st.session_state.get("selected_project_id") else None
 
 def selected_data():
